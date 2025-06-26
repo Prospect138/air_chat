@@ -1,0 +1,47 @@
+{
+	"name": "cassist",
+	"description": "cassist",
+	"version": "0.0.1",
+	"publisher": "KirillAdamov",
+	"private": true,
+	"license": "MIT",
+	"repository": {
+		"type": "",
+		"url": ""
+	},
+	"engines": {
+		"vscode": "^1.74.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onWebviewPanel:cassist"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "CAssist.chat",
+				"title": "Chat with C/C++ LTE Assistant",
+				"category": "CAssist"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint",
+		"watch": "tsc -w -p ./"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.13.0",
+		"@stylistic/eslint-plugin": "^2.9.0",
+		"@types/node": "^20",
+		"@types/vscode": "^1.73.0",
+		"@types/vscode-webview": "^1.57.0",
+		"eslint": "^9.13.0",
+		"typescript": "^5.8.2",
+		"typescript-eslint": "^8.26.0"
+	}
+}
