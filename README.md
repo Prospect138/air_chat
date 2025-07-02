@@ -5,7 +5,7 @@ AI powered LLM RAG chat for VS code.
 ## Modules
 
 - air_chat_exstension - source files for vs code exstension
-- air_chat_service - python backend, that act as http server and interact with ollama service, AND script for build faiss database.
+- air_chat_service - python backend, that act as http server and interact with ollama service AND script for build faiss database.
 
 ## Diagram
 ```
@@ -19,9 +19,15 @@ AI powered LLM RAG chat for VS code.
 
 ## How build:
 - install conda enviroment from enviroment.yml
-- start ollama service
+- start ollama service:
 ```
 ollama serve
 ```
+- build database with create_database.py, don't forget to choose dir 
 - start oll_chat.py
-- ???
+- open air_chat_exstension/ with vs code, then start it
+
+## TODO
+- Refactoring
+- clang AST based context enlargement
+- containerization
