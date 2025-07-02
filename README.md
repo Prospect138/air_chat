@@ -1,6 +1,6 @@
 # AIR CHAT
 
-AI powered LLM RAG chat for VS code.
+AI powered LLM RAG chat for VS code for C/C++ projects.
 
 ## Modules
 
