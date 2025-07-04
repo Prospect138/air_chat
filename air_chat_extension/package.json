@@ -9,22 +9,26 @@
 		"type": "",
 		"url": ""
 	},
+	"activationEvents": [
+  		"onWebviewPanel:Air Chat",
+		"onCommand:AirChat.chat"
+	],
 	"engines": {
-		"vscode": "^1.74.0"
+		"vscode": "^1.100.3"
 	},
 	"categories": [
 		"Other"
 	],
 	"activationEvents": [
-		"onWebviewPanel:cassist"
+		"onWebviewPanel:Air Chat"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "CAssist.chat",
+				"command": "AirChat.chat",
 				"title": "Chat with C/C++ LTE Assistant",
-				"category": "CAssist"
+				"category": "AirChat"
 			}
 		]
 	},
@@ -43,5 +47,9 @@
 		"eslint": "^9.13.0",
 		"typescript": "^5.8.2",
 		"typescript-eslint": "^8.26.0"
+	},
+	"dependencies": {
+		"compile": "^0.0.2",
+		"axios": "^1.6.7"
 	}
 }

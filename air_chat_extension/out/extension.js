@@ -2,21 +2,24 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 const vscode = require("vscode");
+const axios = require("axios");
 function activate(context) {
-    context.subscriptions.push(vscode.commands.registerCommand('CAssist.chat', () => {
-        CAssistPanel.createOrShow(context.extensionUri);
+    context.subscriptions.push(vscode.commands.registerCommand('AirChat.chat', () => {
+        AirChatPanel.createOrShow(context.extensionUri);
     }));
     if (vscode.window.registerWebviewPanelSerializer) {
         // Make sure we register a serializer in activation event
-        vscode.window.registerWebviewPanelSerializer(CAssistPanel.viewType, {
+        vscode.window.registerWebviewPanelSerializer(AirChatPanel.viewType, {
             async deserializeWebviewPanel(webviewPanel, state) {
                 console.log(`Got state: ${state}`);
                 // Reset the webview options so we use latest uri for `localResourceRoots`.
                 webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
-                CAssistPanel.revive(webviewPanel, context.extensionUri);
+                AirChatPanel.revive(webviewPanel, context.extensionUri);
             }
         });
     }
+    //debugger; // Принудительная остановка
+    console.log('Extension activated!');
 }
 function getWebviewOptions(extensionUri) {
     return {
@@ -26,25 +29,22 @@ function getWebviewOptions(extensionUri) {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
     };
 }
-/**
- * Manages cat coding webview panels
- */
-class CAssistPanel {
+class AirChatPanel {
     static createOrShow(extensionUri) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
         // If we already have a panel, show it.
-        if (CAssistPanel.currentPanel) {
-            CAssistPanel.currentPanel._panel.reveal(column);
+        if (AirChatPanel.currentPanel) {
+            AirChatPanel.currentPanel._panel.reveal(column);
             return;
         }
         // Otherwise, create a new panel.
-        const panel = vscode.window.createWebviewPanel(CAssistPanel.viewType, 'CAssist panel', column || vscode.ViewColumn.One, getWebviewOptions(extensionUri));
-        CAssistPanel.currentPanel = new CAssistPanel(panel, extensionUri);
+        const panel = vscode.window.createWebviewPanel(AirChatPanel.viewType, 'CAssist panel', column || vscode.ViewColumn.One, getWebviewOptions(extensionUri));
+        AirChatPanel.currentPanel = new AirChatPanel(panel, extensionUri);
     }
     static revive(panel, extensionUri) {
-        CAssistPanel.currentPanel = new CAssistPanel(panel, extensionUri);
+        AirChatPanel.currentPanel = new AirChatPanel(panel, extensionUri);
     }
     constructor(panel, extensionUri) {
         this._disposables = [];
@@ -61,22 +61,37 @@ class CAssistPanel {
                 this._update();
             }
         }, null, this._disposables);
-        // Handle messages from the webview
-        this._panel.webview.onDidReceiveMessage(message => {
+        this._panel.webview.onDidReceiveMessage(async (message) => {
             switch (message.command) {
+                case 'sendMessage':
+                    try {
+                        const data = JSON.parse(message.value);
+                        const chat_request = data.request;
+                        const chat_history = data.history || [];
+                        const response = await axios.default.post('http://127.0.0.1:21666/chat', {
+                            request: chat_request,
+                            history: chat_history
+                        });
+                        this._panel.webview.postMessage({
+                            command: 'getResponse',
+                            payload: {
+                                content: response.data.response,
+                                history: response.data.history
+                            }
+                        });
+                    }
+                    catch (error) {
+                        vscode.window.showErrorMessage(`Error on connecting server: ${error}`);
+                    }
+                    break;
                 case 'alert':
                     vscode.window.showErrorMessage(message.text);
                     return;
             }
         }, null, this._disposables);
     }
-    doRefactor() {
-        // Send a message to the webview webview.
-        // You can send any JSON serializable data.
-        this._panel.webview.postMessage({ command: 'refactor' });
-    }
     dispose() {
-        CAssistPanel.currentPanel = undefined;
+        AirChatPanel.currentPanel = undefined;
         // Clean up our resources
         this._panel.dispose();
         while (this._disposables.length) {
@@ -109,10 +124,6 @@ class CAssistPanel {
 			<head>
 				<meta charset="UTF-8">
 
-				<!--
-					Use a content security policy to only allow loading images from https or from our extension directory,
-					and only allow scripts that have a specific nonce.
-				-->
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -123,7 +134,7 @@ class CAssistPanel {
 				<title>Code Assistant</title>
 			</head>
 			<body>
-			    <h1>Мой Чат-бот</h1>
+			    <h1>Air Chat</h1>
 			    <div id="chat-container"></div>
 			    <input type="text" id="user-input" placeholder="Введите ваше сообщение...">
 			    <button onclick="sendMessage()">Отправить</button>
@@ -133,7 +144,7 @@ class CAssistPanel {
         return html_view;
     }
 }
-CAssistPanel.viewType = 'C++Assistant';
+AirChatPanel.viewType = 'Air Chat';
 function getNonce() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

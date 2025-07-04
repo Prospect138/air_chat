@@ -13,6 +13,7 @@ def use_retriever(model_query: str) -> str:
     result = ''
     for doc in response_from_retriever:
         result += doc.metadata['file_path'] + doc.metadata['full_code']
+        logger.debug(f"called funds: {doc.metadata['called_functions']}\n{doc.metadata['full_code']}")
     return result
 
 
@@ -51,13 +52,13 @@ def run_chat(user_message: str, history: list):
         'type': 'function',
         'function': {
             'name': 'use_retriever',
-            'description': 'Use RAG retriever to get extend context with snippets of code base',
+            'description': 'Use RAG retriever to get extend context with snippets of code base.',
             'parameters': {
                 'type': 'object',
-                'required': ['model_query'],
                 'properties': {
-                    'model_query': {'type': 'string', 'description': 'Query for retriever'}
+                    'model_query': {'type': 'string', 'description': 'Query for retriever'},
                 },
+                'required': ['model_query']
             },
         },
     }
@@ -69,34 +70,49 @@ def run_chat(user_message: str, history: list):
     model_name = 'devstral:24b'
 
     messages = []
-    system_prompt = Message(role='system', content='Ты - интеллектуальный помощник программиста, который работает над eNodeB в рамках LTE. Помимо твоей экспертизы в области LTE, EUTRAN и знания 3gpp стандартов, у тебя так же есть доступ к RAG хранилищу с кодовой базой проекта. Перед ответом сверяйся с этой базой данных. И пиши по-русски. Удачи.')
+    system_prompt = Message(role='system', content='Ты — помощник программиста. Твоя задача — найти нужную информацию в кодовой базе,\
+                                                    используя RAG. Если первый поиск не дал достаточного результата — задавай уточняющие вопросы,\
+                                                    ищи по связанным функциям (например, из поля called_functions), и повторяй поиск.\
+                                                    Продолжай, пока не соберёшь полный контекст. Отвечай только после этого. И пиши по-русски. Удачи.')
     messages.append(system_prompt)
     for msg in history:
         messages.append(Message(role=msg['role'], content=msg['content']))
     messages.append(Message(role='user', content=user_message))
 
-    response: ChatResponse = chat(
-        model_name,
-        messages=messages,
-        tools=[use_retriever_tool],
-        #Сюда добавить аргументы
-    )
-    
-    if response.message.tool_calls:
+    for msg in history:
+        messages.append(Message(role=msg['role'], content=msg['content']))
+    messages.append(Message(role='user', content=user_message))
+
+    max_tool_calls = 5 
+    tool_call_count = 0
+
+    while tool_call_count < max_tool_calls:
+        response: ChatResponse = chat(
+            model_name,
+            messages=messages,
+            tools=[use_retriever_tool],
+        )
+
+        if not response.message.tool_calls:
+            break
+
         for tool in response.message.tool_calls:
+            tool_call_count += 1
             if function_to_call := available_functions.get(tool.function.name):
                 output = function_to_call(**tool.function.arguments)
                 messages.append(Message(role='tool', content=str(output), name=tool.function.name))
-                response = chat(model_name, messages=messages)
-
             else:
-                pass  # function not found
-    else:
+                continue
+
+        # Запросим модель снова после добавления tool_response
+        response = chat(model_name, messages=messages)
+
         messages.append(response.message)
-    new_history = []
-    for m in messages[1:]:
-        new_history.append({'role': m.role, 'content': m.content})
-    return response.message.content, new_history
+
+    final_answer = response.message.content
+    new_history = [{'role': m.role, 'content': m.content} for m in messages[1:]]
+
+    return final_answer, new_history
 
 @app.post("/chat", response_model=ChatResponseModel)
 def chat_endpoint(req: ChatRequest):
@@ -107,7 +123,7 @@ def chat_endpoint(req: ChatRequest):
     return ChatResponseModel(response=response, history=new_history)
 
 
-db_path = "/home/prospect/oia5g2/code_vector_db"
+db_path = "/home/prospect/oia5g2/air_chat/air_chat_service/code_vector_db"
 embeddings = OllamaEmbeddings(model='nomic-embed-text:latest')
 vectorstore = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
 retriever = vectorstore.as_retriever(search_kwargs={'k': 5, 'similarity_score_threshold': 0.8})

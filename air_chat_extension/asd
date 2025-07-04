@@ -1,0 +1,17 @@
+import requests
+
+# Определяем URL для запроса
+url = "http://0.0.0.0:21666/chat"
+
+# Определяем данные для отправки в теле запроса
+data = {
+    "message": "Привет, как дела?",
+    "history": []
+}
+
+# Отправляем POST-запрос на сервер
+response = requests.post(url, json=data)
+
+# Выводим статус код и содержимое ответа
+print("Status Code:", response.status_code)
+print("Response Body:", response.json())
